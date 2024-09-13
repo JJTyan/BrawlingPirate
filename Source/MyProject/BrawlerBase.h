@@ -31,13 +31,15 @@ struct FAttackData
 UCLASS()
 class MYPROJECT_API ABrawlerBase : public AActor
 {
+	friend class UBrawlLogic;
+
 	GENERATED_BODY()
 	
 public:	
 	// Sets default values for this actor's properties
 	ABrawlerBase();
 
-	FAttackData GetAttackData() const {return FAttackData(CurrentAttackPower,CombatDirection); }
+	FAttackData GetAttackData() const {return FAttackData(CurrentAttackPower,ActiveHand); }
 
 	//returns true if attack is possible
 	bool CanAttack() const {return CurrentAttackPower >= ATTACK_THRESHOLD_VALUE;}
@@ -108,7 +110,7 @@ private:
 
 	//Direction that will be used to attack
 	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
-	ECombatDirection CombatDirection {ECombatDirection::None_Max};
+	ECombatDirection ActiveHand {ECombatDirection::None_Max};
 
 	//Amount of damage that can be resisted now
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))

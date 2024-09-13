@@ -38,6 +38,7 @@ void ABrawl::BeginPlay()
 
 	Player = Cast<ABrawlerBase>(CA_Player->GetChildActor());
 	Enemy1 = Cast<ABrawlerBase>(CA_Enemy1->GetChildActor());
+	BrawlLogic->SetProperties(Player, Enemy1);
 }
 
 void ABrawl::Tick(float DeltaTime)

@@ -76,8 +76,8 @@ void ABrawlerBase::IncrementAttackPower()
 
 void ABrawlerBase::SelectCombatDirection(ECombatDirection NewDirection)
 {
-	CombatDirection = NewDirection;
-	OnDirectionChanged.Broadcast(CombatDirection);
+	ActiveHand = NewDirection;
+	OnDirectionChanged.Broadcast(ActiveHand);
 }
 
 void ABrawlerBase::Attack()
@@ -86,7 +86,7 @@ void ABrawlerBase::Attack()
 
 	if (CurrentAttackPower > ATTACK_BASE_VALUE)
 	{
-		switch (CombatDirection)
+		switch (ActiveHand)
 		{
 		case ECombatDirection::None_Max:
 			[[fallthrough]];
@@ -110,7 +110,7 @@ void ABrawlerBase::Attack()
 	}
 	else
 	{
-		switch (CombatDirection)
+		switch (ActiveHand)
 		{
 		case ECombatDirection::None_Max:
 			[[fallthrough]];
@@ -156,13 +156,24 @@ void ABrawlerBase::GetHit(FAttackData AttackData)
 	//If blocking at wrong direction - block 33% of CurrentBlockingPower
 	//If blocking at correct direction - block 100% of CurrentBlockingPower
 
-	float DamageReduction = CurrentBlockPower;
+	//define blocking direction. Right hand blocks enemy Left and vice versa
+	ECombatDirection BlockingDirection = ActiveHand;
+	if (ActiveHand == ECombatDirection::Right)
+	{
+		BlockingDirection = ECombatDirection::Left;
+	}
+	else if (ActiveHand == ECombatDirection::Left)
+	{
+		BlockingDirection = ECombatDirection::Right;
+	}
 
+
+	float DamageReduction = CurrentBlockPower;
 	if (!bHoldingBlock)
 	{
 		DamageReduction *= 0.1f;
 	}
-	else if (AttackData.AttackDirection != CombatDirection)
+	else if (AttackData.AttackDirection != BlockingDirection)
 	{
 		DamageReduction *= 0.33f;
 	}
@@ -200,7 +211,7 @@ void ABrawlerBase::HoldBlock()
 	{
 		FGameplayTag AnimationTagToSearch;
 
-		switch (CombatDirection)
+		switch (ActiveHand)
 		{
 		case ECombatDirection::None_Max:
 			[[fallthrough]];
@@ -235,11 +246,11 @@ void ABrawlerBase::HoldBlock()
 		{
 			if ((AnimData.Animation == CurrentPlayingMontage) && (AnimData.Tag.MatchesTag(FGameplayTag::RequestGameplayTag("Block"))))
 			{
-				if (CombatDirection == ECombatDirection::Left && AnimData.Tag == FBrawlGameplayTags::Get().Block_Right)
+				if (ActiveHand == ECombatDirection::Left && AnimData.Tag == FBrawlGameplayTags::Get().Block_Right)
 				{
 					Mesh->GetAnimInstance()->Montage_Play(FindAnimByTag(FBrawlGameplayTags::Get().Block_Left), 0.5f);
 				}
-				else if (CombatDirection == ECombatDirection::Right && AnimData.Tag == FBrawlGameplayTags::Get().Block_Left)
+				else if (ActiveHand == ECombatDirection::Right && AnimData.Tag == FBrawlGameplayTags::Get().Block_Left)
 				{
 					Mesh->GetAnimInstance()->Montage_Play(FindAnimByTag(FBrawlGameplayTags::Get().Block_Right), 0.5f);
 				}

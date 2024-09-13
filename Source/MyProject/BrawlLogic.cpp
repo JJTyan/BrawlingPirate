@@ -3,32 +3,95 @@
 
 #include "BrawlLogic.h"
 
-// Sets default values for this component's properties
 UBrawlLogic::UBrawlLogic()
 {
-	// Set this component to be initialized when the game starts, and to be ticked every frame.  You can turn these features
-	// off to improve performance if you don't need them.
 	PrimaryComponentTick.bCanEverTick = true;
-
-	// ...
+	PrimaryComponentTick.TickInterval = 0.1f;
 }
 
-
-// Called when the game starts
 void UBrawlLogic::BeginPlay()
 {
 	Super::BeginPlay();
-
-	// ...
-	
 }
 
-
-// Called every frame
 void UBrawlLogic::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+	TimerTick(DeltaTime);
+}
 
-	// ...
+void UBrawlLogic::TimerTick(float DeltaTime)
+{
+	if (!(Player && Enemy))
+	{
+		return;
+	}
+
+	if (ShouldAddNewAction())
+	{
+		AddActionToStack();
+	}
+
+	if (FMath::IsNearlyEqual(Timer, ActionStack[0].ActionStartTime,DeltaTime))
+	{
+		Enemy->SelectCombatDirection(ActionStack[0].Direction);
+		ActionStack[0].AcionStartDelegate.ExecuteIfBound();
+		ActionStack[0].AcionStartDelegate = nullptr;
+	}
+	else if (FMath::IsNearlyEqual(Timer, ActionStack[0].ActionEndTime, DeltaTime))
+	{
+		ActionStack[0].AcionEndDelegate.ExecuteIfBound();
+		ActionStack[0].AcionEndDelegate = nullptr;
+	}
+	else if (Timer >= ActionStack[0].SeemedEndTime)
+	{
+		ActionStack.RemoveAt(0);
+	}
+
+	Timer += DeltaTime;
+}
+
+bool UBrawlLogic::ShouldAddNewAction() const
+{
+	if (ActionStack.Num() == 0)
+	{
+		return true;
+	}
+	const float CurrenStackLength{ ActionStack.Last().SeemedEndTime - ActionStack[0].SeemedStartTime };
+	return  CurrenStackLength < DesiredStackLengthSeconds;
+}
+
+
+void UBrawlLogic::AddActionToStack()
+{
+	//For testing all enemy actions will be blocks with toggling directions
+
+	FEnemyAction NewAction {};
+	NewAction.SeemedStartTime = ActionStack.Num() == 0 ? 0.5f : ActionStack.Last().SeemedEndTime + 0.1f;
+	NewAction.ActionStartTime = NewAction.SeemedStartTime + 0.5f;
+	NewAction.ActionEndTime = NewAction.ActionStartTime + 2.f;
+	NewAction.SeemedEndTime = NewAction.ActionEndTime + 5.f;
+
+	if (ActionStack.Num() == 0)
+	{
+		NewAction.Direction = ECombatDirection::Left;
+	}
+	else if (ActionStack.Last().Direction == ECombatDirection::Left)
+	{
+		NewAction.Direction = ECombatDirection::Right;
+	}
+	else
+	{
+		NewAction.Direction = ECombatDirection::Left;
+	}
+
+	NewAction.AcionStartDelegate.BindUObject(Enemy,&ABrawlerBase::HoldBlock);
+	NewAction.AcionEndDelegate.BindUObject(Enemy, &ABrawlerBase::ReleaseBlock);
+
+	ActionStack.Add(NewAction);
+
+
+	GEngine->AddOnScreenDebugMessage(INDEX_NONE,10.f,FColor::Green, UEnum::GetValueAsString(NewAction.Direction));
+
 }
 
