@@ -25,7 +25,7 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnControllerNumericChangedSignature
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnControllerDirectionChangedSignature, ECombatDirection, NewValue);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnControllerBooleanChangedSignature, bool, NewValue);
 
-UCLASS()
+UCLASS(BlueprintType)
 class MYPROJECT_API UBrawlWidgetController : public UObject
 {
 	GENERATED_BODY()

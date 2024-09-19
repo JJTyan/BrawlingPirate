@@ -13,6 +13,8 @@ class USplineComponent;
 class UInputMappingContext;
 class UInputAction;
 class UCameraComponent;
+class UFloatingPawnMovement;
+class AMovementScheme;
 
 UCLASS()
 class MYPROJECT_API ABrawl : public APawn
@@ -33,7 +35,13 @@ public:
 
 	void Attack(ABrawlerBase* Attacker, ABrawlerBase* Defender, FAttackData AttackData);
 
+private:
+	FRotator GetOrientToMovementRotation() const;
+
 public:
+	UPROPERTY(VisibleDefaultsOnly)
+	TObjectPtr<USceneComponent> Pivot;
+
 	//Player character
 	UPROPERTY(VisibleDefaultsOnly)
 	TObjectPtr<UChildActorComponent> CA_Player;
@@ -46,13 +54,17 @@ public:
 	UPROPERTY(VisibleDefaultsOnly)
 	TObjectPtr<UBrawlLogic> BrawlLogic;
 
-	//Component that defines movement rout
-	UPROPERTY(VisibleDefaultsOnly)
-	TObjectPtr <USplineComponent> RoutComponent;
-
 	//player's camera
 	UPROPERTY(VisibleDefaultsOnly)
 	TObjectPtr<UCameraComponent> FPCamera;
+
+	//movement
+	UPROPERTY(VisibleAnywhere)
+	TObjectPtr<UFloatingPawnMovement> MovementCmp;
+
+	//Curve that defines our movement in the level
+	UPROPERTY(EditAnywhere)
+	TObjectPtr<AMovementScheme> MovementScheme;
 
 private:
 

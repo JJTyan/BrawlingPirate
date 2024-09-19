@@ -5,21 +5,27 @@
 #include "Components/SplineComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "EnhancedInputComponent.h"
+#include "GameFramework/FloatingPawnMovement.h"
 #include "InputMappingContext.h"
 #include "InputActionValue.h"
 #include "Camera/CameraComponent.h"
+#include "MovementScheme.h"
 
 ABrawl::ABrawl()
 {
 	PrimaryActorTick.bCanEverTick = true;
 
+	Pivot = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
+	SetRootComponent(Pivot);
 	CA_Player = CreateDefaultSubobject<UChildActorComponent>(TEXT("Player"));
+	CA_Player->SetupAttachment(RootComponent);
 	CA_Enemy1 = CreateDefaultSubobject<UChildActorComponent>(TEXT("Enemy1"));
-	BrawlLogic = CreateDefaultSubobject<UBrawlLogic>(TEXT("Brawl Logic Component"));
-	RoutComponent = CreateDefaultSubobject<USplineComponent>(TEXT("Rout Component"));
+	CA_Enemy1->SetupAttachment(RootComponent);
 	FPCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
-
 	FPCamera->SetupAttachment(CA_Player);
+
+	BrawlLogic = CreateDefaultSubobject<UBrawlLogic>(TEXT("Brawl Logic Component"));
+	MovementCmp = CreateDefaultSubobject<UFloatingPawnMovement>(TEXT("PawnMovement"));
 }
 
 void ABrawl::PossessedBy(AController* NewController)
@@ -44,6 +50,25 @@ void ABrawl::BeginPlay()
 void ABrawl::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+
+	const FVector Direction {MovementScheme->GetMovementDirection(GetActorLocation())};
+	AddMovementInput(Direction);
+
+	const FRotator DesiredRotation { GetOrientToMovementRotation()};
+	if (!GetActorRotation().Equals(DesiredRotation, 0.01f))
+	{
+		SetActorRotation(DesiredRotation);
+	}
+}
+
+FRotator ABrawl::GetOrientToMovementRotation() const
+{
+	if (MovementCmp->Velocity.SquaredLength() < UE_KINDA_SMALL_NUMBER)
+	{
+		return GetActorRotation();
+	}
+
+	return FRotator(0.f,MovementCmp->Velocity.GetSafeNormal().Rotation().Yaw, 0.f);
 }
 
 void ABrawl::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)

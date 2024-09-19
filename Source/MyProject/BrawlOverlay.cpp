@@ -3,7 +3,7 @@
 
 #include "BrawlOverlay.h"
 
-void UBrawlOverlay::SetWidgetController(UBrawlWidgetController* NewWidgetController)
+void UBrawlOverlay::SetWidgetController(UObject* NewWidgetController)
 {
 	WidgetController = NewWidgetController;
 	BindToController();

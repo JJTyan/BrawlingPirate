@@ -18,7 +18,7 @@ class MYPROJECT_API UBrawlOverlay : public UUserWidget
 	GENERATED_BODY()
 
 public:
-	void SetWidgetController(UBrawlWidgetController* NewWidgetController);
+	void SetWidgetController(UObject* NewWidgetController);
 
 protected:
 	UFUNCTION(BlueprintImplementableEvent)
@@ -26,6 +26,6 @@ protected:
 
 private:
 	UPROPERTY(BlueprintReadOnly, Category = Setup, meta = (AllowPrivateAccess = "true"))
-	UBrawlWidgetController* WidgetController;
+	UObject* WidgetController;
 	
 };

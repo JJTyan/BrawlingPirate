@@ -10,18 +10,27 @@
 DECLARE_DELEGATE(FEnemyActionSignature)
 
 //Describes enemy action - what and when will be executed
+USTRUCT(BlueprintType)
 struct FEnemyAction
 {
+	GENERATED_BODY()
+
+
 	//start time as it will be seen by player in UI
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
 	float SeemedStartTime;
+	//end time as it will be seen by player in UI
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
+	float SeemedEndTime;
+	//Icon for the UI
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
+	UTexture2D* Icon;
+
 	//actual time of starting of ability
 	float ActionStartTime;
 	//actual time of ending the ability
 	float ActionEndTime;
-	//end time as it will be seen by player in UI
-	float SeemedEndTime;
-	//Icon for the UI
-	UTexture2D* Icon;
+
 	//Function to be executed at ActionStartTime
 	FEnemyActionSignature AcionStartDelegate;
 	//Function to be executed at ActionEndTime
@@ -31,6 +40,10 @@ struct FEnemyAction
 };
 
 
+
+DECLARE_MULTICAST_DELEGATE_OneParam(FEnemyActionAddedSignature, FEnemyAction)
+DECLARE_MULTICAST_DELEGATE(FEnemyActionRemovedSignature)
+
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
 class MYPROJECT_API UBrawlLogic : public UActorComponent
 {
@@ -38,29 +51,36 @@ class MYPROJECT_API UBrawlLogic : public UActorComponent
 
 public:	
 	UBrawlLogic();
+	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 	void SetProperties(ABrawlerBase* NewPlayer, ABrawlerBase* NewEnemy) {Player = NewPlayer; Enemy = NewEnemy;};
 
 protected:
 	virtual void BeginPlay() override;
-
-public:	
-	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
-
-private:
-	UPROPERTY(EditAnywhere, category = "Properties", meta = (AllowPrivateAccess = "true"))
-	float DesiredStackLengthSeconds {10.f};
-
-	//Here we hold all actions we planned for the enemy NPC
-	TArray<FEnemyAction> ActionStack;
-
-	//Timer hat we use to track when action should be executed
-	float Timer {0.f};
 
 private:
 	void TimerTick(float DeltaTime);
 	void AddActionToStack();
 
 	bool ShouldAddNewAction() const;
+
+	void SetOverlay();
+
+public:
+	FEnemyActionRemovedSignature OnActionRemoved;
+	FEnemyActionAddedSignature OnActionAdded;
+
+private:
+	UPROPERTY(EditAnywhere, category = "Properties", meta = (AllowPrivateAccess = "true"))
+	float DesiredStackLengthSeconds {10.f};
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, category = "Properties", meta = (AllowPrivateAccess = "true"))
+	TSubclassOf<UBrawlOverlay> OverlayClass;
+
+	//Here we hold all actions we planned for the enemy NPC
+	TArray<FEnemyAction> ActionStack;
+
+	//Timer hat we use to track when action should be executed
+	float Timer {0.f};
 
 	ABrawlerBase* Player;
 	ABrawlerBase* Enemy;

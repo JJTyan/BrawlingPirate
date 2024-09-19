@@ -2,6 +2,9 @@
 
 
 #include "BrawlLogic.h"
+#include "Blueprint/UserWidget.h"
+#include "BrawlOverlay.h"
+#include "ActionsWidgetController.h"
 
 UBrawlLogic::UBrawlLogic()
 {
@@ -9,15 +12,25 @@ UBrawlLogic::UBrawlLogic()
 	PrimaryComponentTick.TickInterval = 0.1f;
 }
 
-void UBrawlLogic::BeginPlay()
-{
-	Super::BeginPlay();
-}
-
 void UBrawlLogic::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 	TimerTick(DeltaTime);
+}
+
+void UBrawlLogic::BeginPlay()
+{
+	Super::BeginPlay();
+	SetOverlay();
+}
+
+void UBrawlLogic::SetOverlay()
+{
+	auto OverlayWidget{ CreateWidget<UBrawlOverlay>(GetWorld(), OverlayClass) };
+	auto WidgetController{ NewObject<UActionsWidgetController>(GetWorld(), UActionsWidgetController::StaticClass()) };
+	OverlayWidget->SetWidgetController(WidgetController);
+	WidgetController->InitializeController(this);
+	OverlayWidget->AddToViewport();
 }
 
 void UBrawlLogic::TimerTick(float DeltaTime)
@@ -46,6 +59,7 @@ void UBrawlLogic::TimerTick(float DeltaTime)
 	else if (Timer >= ActionStack[0].SeemedEndTime)
 	{
 		ActionStack.RemoveAt(0);
+		OnActionRemoved.Broadcast();
 	}
 
 	Timer += DeltaTime;
@@ -61,16 +75,15 @@ bool UBrawlLogic::ShouldAddNewAction() const
 	return  CurrenStackLength < DesiredStackLengthSeconds;
 }
 
-
 void UBrawlLogic::AddActionToStack()
 {
 	//For testing all enemy actions will be blocks with toggling directions
 
 	FEnemyAction NewAction {};
-	NewAction.SeemedStartTime = ActionStack.Num() == 0 ? 0.5f : ActionStack.Last().SeemedEndTime + 0.1f;
+	NewAction.SeemedStartTime = ActionStack.Num() == 0 ? 3.f : ActionStack.Last().SeemedEndTime + 3.f;
 	NewAction.ActionStartTime = NewAction.SeemedStartTime + 0.5f;
 	NewAction.ActionEndTime = NewAction.ActionStartTime + 2.f;
-	NewAction.SeemedEndTime = NewAction.ActionEndTime + 5.f;
+	NewAction.SeemedEndTime = NewAction.ActionEndTime + 0.5f;
 
 	if (ActionStack.Num() == 0)
 	{
@@ -90,8 +103,7 @@ void UBrawlLogic::AddActionToStack()
 
 	ActionStack.Add(NewAction);
 
-
-	GEngine->AddOnScreenDebugMessage(INDEX_NONE,10.f,FColor::Green, UEnum::GetValueAsString(NewAction.Direction));
+	OnActionAdded.Broadcast(NewAction);
 
 }
 
