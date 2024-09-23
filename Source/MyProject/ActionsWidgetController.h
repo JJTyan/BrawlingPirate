@@ -31,6 +31,9 @@ public:
 	UPROPERTY(BlueprintAssignable, category = "Attributes")
 	FOnControllerActionRemovedSignature OnActionRemoved;
 
+	UPROPERTY(BlueprintAssignable, category = "Attributes")
+	FOnControllerActionRemovedSignature OnLogicStopped;
+
 private:
 	void BindToSource();
 	UBrawlLogic* BrawlLogic;

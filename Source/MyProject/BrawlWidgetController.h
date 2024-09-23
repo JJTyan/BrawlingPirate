@@ -24,6 +24,7 @@ struct FBrawlerValues
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnControllerNumericChangedSignature, float, NewValue);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnControllerDirectionChangedSignature, ECombatDirection, NewValue);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnControllerBooleanChangedSignature, bool, NewValue);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnControllerChangedSignature);
 
 UCLASS(BlueprintType)
 class MYPROJECT_API UBrawlWidgetController : public UObject
@@ -35,21 +36,30 @@ public:
 
 	UPROPERTY(BlueprintAssignable, category = "Attributes")
 	FOnControllerNumericChangedSignature OnHealthChanged;
+	
 	UPROPERTY(BlueprintAssignable, category = "Attributes")
 	FOnControllerNumericChangedSignature OnMaxHealthChanged;
+	
 	UPROPERTY(BlueprintAssignable, category = "Attributes")
 	FOnControllerNumericChangedSignature OnBlockChanged;
+	
 	UPROPERTY(BlueprintAssignable, category = "Attributes")
 	FOnControllerNumericChangedSignature OnMaxBlockChanged;
+	
 	UPROPERTY(BlueprintAssignable, category = "Attributes")
 	FOnControllerNumericChangedSignature OnAttackChanged;
+	
 	UPROPERTY(BlueprintAssignable, category = "Attributes")
 	FOnControllerNumericChangedSignature OnMaxAttackChanged;
+	
 	UPROPERTY(BlueprintAssignable, category = "Attributes")
 	FOnControllerDirectionChangedSignature OnDirectionChanged;
 
 	UPROPERTY(BlueprintAssignable, category = "Attributes")
 	FOnControllerBooleanChangedSignature OnBlockStateChanged;
+
+	UPROPERTY(BlueprintAssignable, category = "Attributes")
+	FOnControllerChangedSignature OnKOd;
 
 private:
 	void BindToSource();

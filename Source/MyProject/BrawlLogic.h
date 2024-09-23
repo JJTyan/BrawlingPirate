@@ -52,20 +52,20 @@ class MYPROJECT_API UBrawlLogic : public UActorComponent
 public:	
 	UBrawlLogic();
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
-	void SetProperties(ABrawlerBase* NewPlayer, ABrawlerBase* NewEnemy) {Player = NewPlayer; Enemy = NewEnemy;};
+	void SetProperties(ABrawlerBase* NewPlayer, ABrawlerBase* NewEnemy);
 
 protected:
 	virtual void BeginPlay() override;
 
 private:
 	void TimerTick(float DeltaTime);
-	void AddActionToStack();
-
-	bool ShouldAddNewAction() const;
-
 	void SetOverlay();
-
+	void AddActionToStack();
+	bool ShouldAddNewAction() const;
+	void StopLogic();
+	
 public:
+	FEnemyActionRemovedSignature OnLogicStopped;
 	FEnemyActionRemovedSignature OnActionRemoved;
 	FEnemyActionAddedSignature OnActionAdded;
 
@@ -82,8 +82,12 @@ private:
 	//Timer hat we use to track when action should be executed
 	float Timer {0.f};
 
+	//Flag to pause logic
+	bool bStopped {false};
+
 	ABrawlerBase* Player;
 	ABrawlerBase* Enemy;
+	
 
 		
 };

@@ -20,6 +20,7 @@ enum class ECombatDirection : uint8
 };
 
 DECLARE_MULTICAST_DELEGATE_OneParam(FOnNumericAttributeChangedSignature, float);
+DECLARE_MULTICAST_DELEGATE(FOnAttributeChangedSignature);
 DECLARE_MULTICAST_DELEGATE_OneParam(FOnDirectionAttributeChangedSignature, ECombatDirection);
 
 struct FAttackData
@@ -39,11 +40,11 @@ public:
 	// Sets default values for this actor's properties
 	ABrawlerBase();
 
+	inline bool IsKOd() const { return bKO; }
 	FAttackData GetAttackData() const {return FAttackData(CurrentAttackPower,ActiveHand); }
 
 	//returns true if attack is possible
 	bool CanAttack() const {return CurrentAttackPower >= ATTACK_THRESHOLD_VALUE;}
-
 
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
@@ -90,6 +91,10 @@ private:
 	//Create an overlay and it's controller to show this character data 
 	virtual void SetOverlay();
 
+	//Apply skin material as dynamic material instance
+	void CreateSkinDMI();
+
+	float CalcDamageReduction(const FAttackData& AttackData) const;
 
 public:
 	//broadcasts current health
@@ -103,6 +108,9 @@ public:
 	//broadcasts current direction
 	FOnDirectionAttributeChangedSignature OnDirectionChanged;
 
+	FOnAttributeChangedSignature OnKOd;
+	FOnAttributeChangedSignature OnDead;
+
 
 private:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
@@ -115,6 +123,8 @@ private:
 	//Amount of damage that can be resisted now
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
 	float CurrentHealth {50.f};
+
+	float MaxHealth{ CurrentHealth };
 
 	//Amount of damage that can be resisted now
 	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
@@ -174,4 +184,7 @@ private:
 
 	//Direction of current blocking animation.
 	ECombatDirection BlockingAnimDirection;
+
+	bool bKO {false};
+	bool bDead {false};
 };

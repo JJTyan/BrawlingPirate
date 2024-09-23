@@ -22,4 +22,10 @@ void UActionsWidgetController::BindToSource()
 		{
 			OnActionRemoved.Broadcast();
 		});
+
+	BrawlLogic->OnLogicStopped.AddLambda(
+		[this]()
+		{
+			OnLogicStopped.Broadcast();
+		});
 }

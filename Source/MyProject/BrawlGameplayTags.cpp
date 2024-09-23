@@ -14,4 +14,5 @@ void FBrawlGameplayTags::InitializeNativeTags()
 	GameplayTags.Charged_Attack_Right = UGameplayTagsManager::Get().AddNativeGameplayTag(FName("Attack.Charged.Right"), FString(TEXT("Right hand charged attack")));;
 	GameplayTags.Block_Left = UGameplayTagsManager::Get().AddNativeGameplayTag(FName("Block.Left"), FString(TEXT("Left hand block")));;
 	GameplayTags.Block_Right = UGameplayTagsManager::Get().AddNativeGameplayTag(FName("Block.Right"), FString(TEXT("Right hand block")));;
+	GameplayTags.Stance_KO = UGameplayTagsManager::Get().AddNativeGameplayTag(FName("Sance.KO"), FString(TEXT("Knock out")));;
 }

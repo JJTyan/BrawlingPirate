@@ -51,13 +51,16 @@ void ABrawl::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	const FVector Direction {MovementScheme->GetMovementDirection(GetActorLocation())};
-	AddMovementInput(Direction);
-
-	const FRotator DesiredRotation { GetOrientToMovementRotation()};
-	if (!GetActorRotation().Equals(DesiredRotation, 0.01f))
+	if (!(Player->IsKOd() || Enemy1->IsKOd()))
 	{
-		SetActorRotation(DesiredRotation);
+		const FVector Direction{ MovementScheme->GetMovementDirection(GetActorLocation()) };
+		AddMovementInput(Direction);
+
+		const FRotator DesiredRotation{ GetOrientToMovementRotation() };
+		if (!GetActorRotation().Equals(DesiredRotation, 0.01f))
+		{
+			SetActorRotation(DesiredRotation);
+		}
 	}
 }
 

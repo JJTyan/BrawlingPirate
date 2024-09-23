@@ -41,6 +41,11 @@ void UBrawlWidgetController::BindToSource()
 		{
 			OnBlockStateChanged.Broadcast(Value > 0);
 		});
+	Brawler->OnKOd.AddLambda(
+		[this]()
+		{
+			OnKOd.Broadcast();
+		});
 }
 
 void UBrawlWidgetController::BroadcastInitialValues(FBrawlerValues InitialValues)

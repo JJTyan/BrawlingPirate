@@ -24,6 +24,7 @@ public:
 	FGameplayTag Charged_Attack_Right;
 	FGameplayTag Block_Left;
 	FGameplayTag Block_Right;
+	FGameplayTag Stance_KO;
 
 private:
 	static FBrawlGameplayTags GameplayTags;

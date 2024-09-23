@@ -7,6 +7,8 @@
 #include "Blueprint/UserWidget.h"
 #include "BrawlOverlay.h"
 #include "BrawlWidgetController.h"
+#include "Kismet/KismetMaterialLibrary.h"
+#include "Materials/MaterialInstanceDynamic.h"
 
 ABrawlerBase::ABrawlerBase()
 {
@@ -25,6 +27,8 @@ void ABrawlerBase::BeginPlay()
 	{
 		SetOverlay();
 	}
+
+	CreateSkinDMI();
 }
 
 void ABrawlerBase::SetOverlay()
@@ -37,6 +41,13 @@ void ABrawlerBase::SetOverlay()
 	FBrawlerValues InitialValues {CurrentHealth, CurrentHealth,CurrentBlockPower, BLOCK_BASE_VALUE, CurrentAttackPower, ATTACK_MAX_VALUE};
 	WidgetController->InitializeController(this, InitialValues);
 	OverlayWidget->AddToViewport();
+}
+
+void ABrawlerBase::CreateSkinDMI()
+{
+	TArray<UMaterialInterface*> Materials{ Mesh->GetMaterials() };
+	UMaterialInstanceDynamic* DynamicMaterial = UKismetMaterialLibrary::CreateDynamicMaterialInstance(this, Materials[0]);
+	Mesh->SetMaterial(0, DynamicMaterial);
 }
 
 void ABrawlerBase::Tick(float DeltaTime)
@@ -62,6 +73,26 @@ void ABrawlerBase::Tick(float DeltaTime)
 	{
 		RestoreBlockPower();
 	}
+}
+
+void ABrawlerBase::RestoreAttackPower()
+{
+	CurrentAttackPower += ATTACK_RESTORE_PER_SEC * GetWorld()->GetDeltaSeconds();
+	OnAttackValueChanged.Broadcast(CurrentAttackPower);
+}
+
+void ABrawlerBase::DecrementBlockPower()
+{
+	CurrentBlockPower -= BLOCK_DECREMENT_PER_SEC * GetWorld()->GetDeltaSeconds();
+	CurrentBlockPower = FMath::Max(CurrentBlockPower, 0.f);
+	OnBlockValueChanged.Broadcast(CurrentBlockPower);
+}
+
+void ABrawlerBase::RestoreBlockPower()
+{
+	CurrentBlockPower += BLOCK_RESTORE_PER_SEC * GetWorld()->GetDeltaSeconds();
+	CurrentBlockPower = FMath::Min(CurrentBlockPower, BLOCK_BASE_VALUE);
+	OnBlockValueChanged.Broadcast(CurrentBlockPower);
 }
 
 void ABrawlerBase::IncrementAttackPower()
@@ -150,13 +181,39 @@ UAnimMontage* ABrawlerBase::FindAnimByTag(FGameplayTag AnimationTagToSearch)
 	return PossibleAnimations[FMath::RandRange(0, PossibleAnimations.Num() - 1)];
 }
 
+void ABrawlerBase::DropAttackPower()
+{
+	CurrentAttackPower /= 2.f;
+	OnAttackValueChanged.Broadcast(CurrentAttackPower);
+}
+
 void ABrawlerBase::GetHit(FAttackData AttackData)
 {
-	//if not blocking at all - block 10% of CurrentBlockingPower
-	//If blocking at wrong direction - block 33% of CurrentBlockingPower
-	//If blocking at correct direction - block 100% of CurrentBlockingPower
+	const float RecievedDamage {AttackData.AttackPower - CalcDamageReduction(AttackData)};
 
-	//define blocking direction. Right hand blocks enemy Left and vice versa
+	if (!bKO)
+	{
+		CurrentHealth -= RecievedDamage;
+		if (CurrentHealth <= 0)
+		{
+			bKO = true;
+			OnKOd.Broadcast();
+			Mesh->GetAnimInstance()->Montage_Play(FindAnimByTag(FBrawlGameplayTags::Get().Stance_KO), 0.5f);
+		}
+
+		Cast<UMaterialInstanceDynamic>(Mesh->GetMaterial(0))->SetScalarParameterValue(FName("DamageMask"), 1 - CurrentHealth / MaxHealth);
+		OnHealthChanged.Broadcast(CurrentHealth);
+	}
+	
+}
+
+float ABrawlerBase::CalcDamageReduction(const FAttackData& AttackData) const
+{
+	//if not blocking at all - block 10% of CurrentBlockingPower
+		//If blocking at wrong direction - block 33% of CurrentBlockingPower
+		//If blocking at correct direction - block 100% of CurrentBlockingPower
+
+		//define blocking direction. Right hand blocks enemy Left and vice versa
 	ECombatDirection BlockingDirection = ActiveHand;
 	if (ActiveHand == ECombatDirection::Right)
 	{
@@ -167,7 +224,6 @@ void ABrawlerBase::GetHit(FAttackData AttackData)
 		BlockingDirection = ECombatDirection::Right;
 	}
 
-
 	float DamageReduction = CurrentBlockPower;
 	if (!bHoldingBlock)
 	{
@@ -177,24 +233,11 @@ void ABrawlerBase::GetHit(FAttackData AttackData)
 	{
 		DamageReduction *= 0.33f;
 	}
-	const float RecievedDamage {AttackData.AttackPower - DamageReduction};
 
-	CurrentHealth -= RecievedDamage;
-	OnHealthChanged.Broadcast(CurrentHealth);
-
+	return DamageReduction;
 }
 
-void ABrawlerBase::RestoreAttackPower()
-{
-	CurrentAttackPower += ATTACK_RESTORE_PER_SEC * GetWorld()->GetDeltaSeconds();
-	OnAttackValueChanged.Broadcast(CurrentAttackPower);
-}
 
-void ABrawlerBase::DropAttackPower()
-{
-	CurrentAttackPower /= 2.f;
-	OnAttackValueChanged.Broadcast(CurrentAttackPower);
-}
 
 void ABrawlerBase::HoldBlock()
 {
@@ -265,18 +308,3 @@ void ABrawlerBase::ReleaseBlock()
 	bHoldingBlock = false;
 	Mesh->GetAnimInstance()->Montage_Stop(0.5f);
 }
-
-void ABrawlerBase::DecrementBlockPower()
-{
-	CurrentBlockPower -= BLOCK_DECREMENT_PER_SEC * GetWorld()->GetDeltaSeconds();
-	CurrentBlockPower = FMath::Max(CurrentBlockPower,0.f);
-	OnBlockValueChanged.Broadcast(CurrentBlockPower);
-}
-
-void ABrawlerBase::RestoreBlockPower()
-{
-	CurrentBlockPower += BLOCK_RESTORE_PER_SEC * GetWorld()->GetDeltaSeconds();
-	CurrentBlockPower = FMath::Min(CurrentBlockPower, BLOCK_BASE_VALUE);
-	OnBlockValueChanged.Broadcast(CurrentBlockPower);
-}
-

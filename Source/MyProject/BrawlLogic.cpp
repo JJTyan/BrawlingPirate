@@ -18,6 +18,22 @@ void UBrawlLogic::TickComponent(float DeltaTime, ELevelTick TickType, FActorComp
 	TimerTick(DeltaTime);
 }
 
+void UBrawlLogic::SetProperties(ABrawlerBase* NewPlayer, ABrawlerBase* NewEnemy)
+{
+	Player = NewPlayer;
+	Enemy = NewEnemy;
+
+	Enemy->OnKOd.AddUObject(this,&UBrawlLogic::StopLogic);
+
+}
+
+void UBrawlLogic::StopLogic()
+{
+	bStopped = true;
+	ActionStack.Empty();
+	OnLogicStopped.Broadcast();
+}
+
 void UBrawlLogic::BeginPlay()
 {
 	Super::BeginPlay();
@@ -35,7 +51,7 @@ void UBrawlLogic::SetOverlay()
 
 void UBrawlLogic::TimerTick(float DeltaTime)
 {
-	if (!(Player && Enemy))
+	if (!(Player && Enemy) || bStopped)
 	{
 		return;
 	}
