@@ -28,4 +28,9 @@ void UActionsWidgetController::BindToSource()
 		{
 			OnLogicStopped.Broadcast();
 		});
+	BrawlLogic->OnReset.AddLambda(
+		[this]()
+		{
+			OnLogicReset.Broadcast();
+		});
 }

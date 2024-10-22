@@ -61,6 +61,12 @@ public:
 	UPROPERTY(BlueprintAssignable, category = "Attributes")
 	FOnControllerChangedSignature OnKOd;
 
+	UPROPERTY(BlueprintAssignable, category = "Attributes")
+	FOnControllerChangedSignature OnFinisherUsed;
+
+	UPROPERTY(BlueprintAssignable, category = "Attributes")
+	FOnControllerChangedSignature OnReset;
+
 private:
 	void BindToSource();
 

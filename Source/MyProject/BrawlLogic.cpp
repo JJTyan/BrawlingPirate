@@ -22,9 +22,14 @@ void UBrawlLogic::SetProperties(ABrawlerBase* NewPlayer, ABrawlerBase* NewEnemy)
 {
 	Player = NewPlayer;
 	Enemy = NewEnemy;
-
 	Enemy->OnKOd.AddUObject(this,&UBrawlLogic::StopLogic);
+}
 
+void UBrawlLogic::Reset()
+{
+	Timer = 0.f;
+	bStopped = false;
+	OnReset.Broadcast();
 }
 
 void UBrawlLogic::StopLogic()
@@ -108,6 +113,14 @@ void UBrawlLogic::AddActionToStack()
 	else if (ActionStack.Last().Direction == ECombatDirection::Left)
 	{
 		NewAction.Direction = ECombatDirection::Right;
+	}
+	else if (ActionStack.Last().Direction == ECombatDirection::Right)
+	{
+		NewAction.Direction = ECombatDirection::Top;
+	}
+	else if (ActionStack.Last().Direction == ECombatDirection::Top)
+	{
+		NewAction.Direction = ECombatDirection::Bottom;
 	}
 	else
 	{

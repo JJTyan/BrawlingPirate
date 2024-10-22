@@ -16,11 +16,25 @@ struct FAnimData
 {
 	GENERATED_BODY()
 
+	//Anim montage
 	UPROPERTY(EditAnywhere)
 	TObjectPtr<UAnimMontage> Animation;
 
+	//Tag of this montage, so it can be searched
 	UPROPERTY(EditAnywhere)
 	FGameplayTag Tag;
+
+	//Tag that specifies type of hit reaction when not blocked (for combat animations)
+	UPROPERTY(EditAnywhere)
+	FGameplayTag HitReactionTag;
+
+	//Tag that specifies type of hit reaction when blocked (for combat animations)
+	UPROPERTY(EditAnywhere)
+	FGameplayTag BlockReactionTag;
+
+	//If true - IK will be enabled for this animation
+	UPROPERTY(EditAnywhere)
+	bool bUseIK {false};
 };
 
 UCLASS()

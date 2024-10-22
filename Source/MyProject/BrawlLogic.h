@@ -15,7 +15,6 @@ struct FEnemyAction
 {
 	GENERATED_BODY()
 
-
 	//start time as it will be seen by player in UI
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
 	float SeemedStartTime;
@@ -53,6 +52,7 @@ public:
 	UBrawlLogic();
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 	void SetProperties(ABrawlerBase* NewPlayer, ABrawlerBase* NewEnemy);
+	void Reset();
 
 protected:
 	virtual void BeginPlay() override;
@@ -65,6 +65,7 @@ private:
 	void StopLogic();
 	
 public:
+	FEnemyActionRemovedSignature OnReset;
 	FEnemyActionRemovedSignature OnLogicStopped;
 	FEnemyActionRemovedSignature OnActionRemoved;
 	FEnemyActionAddedSignature OnActionAdded;

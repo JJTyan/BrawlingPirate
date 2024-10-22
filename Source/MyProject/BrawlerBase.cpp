@@ -2,18 +2,53 @@
 
 
 #include "BrawlerBase.h"
+#include "Brawl.h"
+#include "BrawlerAnimInstance.h"
+#include "Finisher.h"
 #include "Components/SkeletalMeshComponent.h"
+#include "Components/SphereComponent.h"
+#include "Components/ShapeComponent.h"
+#include "Components/CapsuleComponent.h"
+#include "Components/BoxComponent.h"
 #include "BrawlGameplayTags.h"
 #include "Blueprint/UserWidget.h"
 #include "BrawlOverlay.h"
 #include "BrawlWidgetController.h"
 #include "Kismet/KismetMaterialLibrary.h"
+#include "Kismet/GameplayStatics.h"
 #include "Materials/MaterialInstanceDynamic.h"
 
 ABrawlerBase::ABrawlerBase()
 {
 	PrimaryActorTick.bCanEverTick = true;
 	Mesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("Mesh"));
+
+	//Collision that deal attack
+	RightFistCollision = CreateDefaultSubobject<UCapsuleComponent>(TEXT("Right Fist"));
+	RightFistCollision->SetupAttachment(Mesh,"hand_r");
+	LeftFistCollision = CreateDefaultSubobject<UCapsuleComponent>(TEXT("Left Fist"));
+	LeftFistCollision->SetupAttachment(Mesh, "hand_l");
+
+	//Collision that resieve attack
+	HeadCollision = CreateDefaultSubobject<USphereComponent>(TEXT("Head Collision"));
+	HeadCollision->SetupAttachment(Mesh, "head");
+	BodyCollision = CreateDefaultSubobject<UBoxComponent>(TEXT("Body Collision"));
+	BodyCollision->SetupAttachment(Mesh, "spine_02");
+
+	IKTargetComponent = CreateDefaultSubobject<USceneComponent>(TEXT("IK Target Component"));
+	IKTargetComponent->SetupAttachment(Mesh);
+}
+
+void ABrawlerBase::SetIKTarget(FVector Location, FName Socket)
+{
+	FAttachmentTransformRules TransformRules { EAttachmentRule::KeepRelative,true};
+	IKTargetComponent->AttachToComponent(Mesh, TransformRules, Socket);
+	IKTargetComponent->SetWorldLocation(Location);
+}
+
+FVector ABrawlerBase::GetIKTargetLocation() const
+{
+	return IKTargetComponent->GetComponentLocation();
 }
 
 void ABrawlerBase::BeginPlay()
@@ -29,6 +64,7 @@ void ABrawlerBase::BeginPlay()
 	}
 
 	CreateSkinDMI();
+	Cast<UBrawlerAnimInstance>(Mesh->GetAnimInstance())->InitializeAnimation(this);
 }
 
 void ABrawlerBase::SetOverlay()
@@ -41,6 +77,26 @@ void ABrawlerBase::SetOverlay()
 	FBrawlerValues InitialValues {CurrentHealth, CurrentHealth,CurrentBlockPower, BLOCK_BASE_VALUE, CurrentAttackPower, ATTACK_MAX_VALUE};
 	WidgetController->InitializeController(this, InitialValues);
 	OverlayWidget->AddToViewport();
+}
+
+void ABrawlerBase::EnterFinisherCode()
+{
+	//TODO For now there is no code to check, so we assume that anything will lead to the finisher
+	FTimerHandle TimerHandle;
+	GetWorldTimerManager().SetTimer(TimerHandle, [this]()
+		{
+			SpawnFinisher();
+			OnFinisherUsed.Broadcast();
+		}, 0.5f, false);
+}
+
+void ABrawlerBase::SpawnFinisher()
+{
+	UClass* FinisherToSpawn	{Finishers.Array()[FMath::RandRange(0, Finishers.Num() - 1)]};
+	FTransform SpawnTransform { FTransform(FVector::ZeroVector) };
+	AFinisher* Finisher {GetWorld()->SpawnActorDeferred<AFinisher>(FinisherToSpawn,SpawnTransform)};
+	Finisher->SetBrawl(Cast<ABrawl>(GetParentActor()));
+	UGameplayStatics::FinishSpawningActor(Finisher, SpawnTransform);
 }
 
 void ABrawlerBase::CreateSkinDMI()
@@ -102,6 +158,8 @@ void ABrawlerBase::IncrementAttackPower()
 		CurrentAttackPower += ATTACK_INCREMENT_PER_SEC * GetWorld()->GetDeltaSeconds();
 		CurrentAttackPower = FMath::Min(CurrentAttackPower, ATTACK_MAX_VALUE);
 		OnAttackValueChanged.Broadcast(CurrentAttackPower);
+		const float EmissiveAmount { FMath::GetMappedRangeValueClamped(TRange<float>(ATTACK_BASE_VALUE, ATTACK_MAX_VALUE), TRange<float>(0.f, 1.f),CurrentAttackPower) };
+		Cast<UMaterialInstanceDynamic>(Mesh->GetMaterial(0))->SetScalarParameterValue(FName("EmissiveHandsStrength"), EmissiveAmount);
 	}
 }
 
@@ -123,11 +181,11 @@ void ABrawlerBase::Attack()
 			[[fallthrough]];
 			//break;
 		case ECombatDirection::Top:
-			[[fallthrough]];
-			//break;
+			AnimationTagToSearch = FBrawlGameplayTags::Get().Charged_Attack_Top;
+			break;
 		case ECombatDirection::Bottom:
-			[[fallthrough]];
-			//break;
+			AnimationTagToSearch = FBrawlGameplayTags::Get().Charged_Attack_Bottom;
+			break;
 		case ECombatDirection::Left:
 			AnimationTagToSearch = FBrawlGameplayTags::Get().Charged_Attack_Left;
 			break;
@@ -147,11 +205,11 @@ void ABrawlerBase::Attack()
 			[[fallthrough]];
 			//break;
 		case ECombatDirection::Top:
-			[[fallthrough]];
-			//break;
+			AnimationTagToSearch = FBrawlGameplayTags::Get().Fast_Attack_Top;
+			break;
 		case ECombatDirection::Bottom:
-			[[fallthrough]];
-			//break;
+			AnimationTagToSearch = FBrawlGameplayTags::Get().Fast_Attack_Bottom;
+			break;
 		case ECombatDirection::Left:
 			AnimationTagToSearch = FBrawlGameplayTags::Get().Fast_Attack_Left;
 			break;
@@ -163,21 +221,26 @@ void ABrawlerBase::Attack()
 		}
 	}
 
-	Mesh->GetAnimInstance()->Montage_Play(FindAnimByTag(AnimationTagToSearch), 0.5f);
+	Cast<UMaterialInstanceDynamic>(Mesh->GetMaterial(0))->SetScalarParameterValue(FName("EmissiveHandsStrength"), 0);	
+	
+	const FAnimData AnimData { FindAnimDataByTag(AnimationTagToSearch) };
+	Mesh->GetAnimInstance()->Montage_Play(AnimData.Animation, 0.5f);
+	bUseHandIK = AnimData.bUseIK;
 	DropAttackPower();
 }
 
-UAnimMontage* ABrawlerBase::FindAnimByTag(FGameplayTag AnimationTagToSearch)
+FAnimData ABrawlerBase::FindAnimDataByTag(FGameplayTag AnimationTagToSearch)
 {
-	TArray<UAnimMontage*> PossibleAnimations;
-	for (const FAnimData& AnimData : Animations->Animations)
+	TArray<FAnimData> PossibleAnimations;
+	for (FAnimData AnimData : Animations->Animations)
 	{
 		if (AnimData.Tag == AnimationTagToSearch)
 		{
-			PossibleAnimations.Add(AnimData.Animation);
+			PossibleAnimations.Add(AnimData);
 		}
 	}
 
+	//checkf(PossibleAnimations.Num() > 0, TEXT("Anim not found by tag %s - this is not allowed"), *AnimationTagToSearch.ToString());
 	return PossibleAnimations[FMath::RandRange(0, PossibleAnimations.Num() - 1)];
 }
 
@@ -189,22 +252,42 @@ void ABrawlerBase::DropAttackPower()
 
 void ABrawlerBase::GetHit(FAttackData AttackData)
 {
+	HitData = AttackData;
 	const float RecievedDamage {AttackData.AttackPower - CalcDamageReduction(AttackData)};
 
-	if (!bKO)
+	CurrentHealth -= RecievedDamage;
+	if (CurrentHealth <= 0)
 	{
-		CurrentHealth -= RecievedDamage;
-		if (CurrentHealth <= 0)
-		{
-			bKO = true;
-			OnKOd.Broadcast();
-			Mesh->GetAnimInstance()->Montage_Play(FindAnimByTag(FBrawlGameplayTags::Get().Stance_KO), 0.5f);
-		}
+		bKO = true;
+		OnKOd.Broadcast();
 
-		Cast<UMaterialInstanceDynamic>(Mesh->GetMaterial(0))->SetScalarParameterValue(FName("DamageMask"), 1 - CurrentHealth / MaxHealth);
-		OnHealthChanged.Broadcast(CurrentHealth);
+		Mesh->GetAnimInstance()->Montage_Play(FindAnimDataByTag(FBrawlGameplayTags::Get().Stance_KO).Animation, 0.5f);	
 	}
-	
+
+	Cast<UMaterialInstanceDynamic>(Mesh->GetMaterial(0))->SetScalarParameterValue(FName("DamageMask"), 1 - CurrentHealth / MaxHealth);
+	OnHealthChanged.Broadcast(CurrentHealth);
+
+	//Try to play hit reaction. This can happen if punch animation didn't trigger an overlap event
+	FTimerHandle TimerHandle;
+	GetWorldTimerManager().SetTimer(TimerHandle,this, &ABrawlerBase::PlayHitReaction, 0.25f, false);
+}
+
+void ABrawlerBase::PlayHitReaction()
+{
+	if (!bPlayingHitReaction)
+	{	
+		Cast<UBrawlerAnimInstance>(Mesh->GetAnimInstance())->PlayHitReacion(HitData.HitReactionTag);
+		
+		FTimerDelegate TimerDelegate;
+		TimerDelegate.BindLambda([this]
+			{
+				bPlayingHitReaction = false;
+			});
+
+		FTimerHandle TimerHandle;
+		GetWorldTimerManager().SetTimer(TimerHandle, TimerDelegate, 0.5f, false);
+	}
+
 }
 
 float ABrawlerBase::CalcDamageReduction(const FAttackData& AttackData) const
@@ -237,8 +320,6 @@ float ABrawlerBase::CalcDamageReduction(const FAttackData& AttackData) const
 	return DamageReduction;
 }
 
-
-
 void ABrawlerBase::HoldBlock()
 {
 	//broadcast only once when changing from false to true
@@ -249,38 +330,38 @@ void ABrawlerBase::HoldBlock()
 
 	bHoldingBlock = true;
 
-	//If we are not playing any montage - play block animation
-	if (!Mesh->GetAnimInstance()->Montage_IsPlaying(nullptr))
+	FGameplayTag AnimationTagToSearch;
+
+	switch (ActiveHand)
 	{
-		FGameplayTag AnimationTagToSearch;
+	case ECombatDirection::None_Max:
+		[[fallthrough]];
+		//break;
+	case ECombatDirection::Top:
+		AnimationTagToSearch = FBrawlGameplayTags::Get().Block_Top;
+		break;
+	case ECombatDirection::Bottom:
+		AnimationTagToSearch = FBrawlGameplayTags::Get().Block_Bottom;
+		break;
+	case ECombatDirection::Left:
+		AnimationTagToSearch = FBrawlGameplayTags::Get().Block_Left;
+		break;
+	case ECombatDirection::Right:
+		AnimationTagToSearch = FBrawlGameplayTags::Get().Block_Right;
+		break;
 
-		switch (ActiveHand)
-		{
-		case ECombatDirection::None_Max:
-			[[fallthrough]];
-			//break;
-		case ECombatDirection::Top:
-			[[fallthrough]];
-			//break;
-		case ECombatDirection::Bottom:
-			[[fallthrough]];
-			//break;
-		case ECombatDirection::Left:
-			AnimationTagToSearch = FBrawlGameplayTags::Get().Block_Left;
-			break;
-		case ECombatDirection::Right:
-			AnimationTagToSearch = FBrawlGameplayTags::Get().Block_Right;
-			break;
+	default:
+		break;
+	}	
 
-		default:
-			break;
-		}
-
-		Mesh->GetAnimInstance()->Montage_Play(FindAnimByTag(AnimationTagToSearch), 0.5f);
+	//If we are not playing any montage - play corresponding block animation
+	if (!Mesh->GetAnimInstance()->Montage_IsPlaying(nullptr))
+	{	
+		Mesh->GetAnimInstance()->Montage_Play(FindAnimDataByTag(AnimationTagToSearch).Animation, 0.5f);	
 	}
 	else
 	{
-		//if we are already playing an animation - we need to check if we need to change left-right direction
+		//if we are already playing an animation - we need to check if we need to change direction
 
 		//check if current animation is blocking and get it's direction
 		UAnimMontage* CurrentPlayingMontage {Mesh->GetAnimInstance()->GetCurrentActiveMontage()};
@@ -289,13 +370,9 @@ void ABrawlerBase::HoldBlock()
 		{
 			if ((AnimData.Animation == CurrentPlayingMontage) && (AnimData.Tag.MatchesTag(FGameplayTag::RequestGameplayTag("Block"))))
 			{
-				if (ActiveHand == ECombatDirection::Left && AnimData.Tag == FBrawlGameplayTags::Get().Block_Right)
-				{
-					Mesh->GetAnimInstance()->Montage_Play(FindAnimByTag(FBrawlGameplayTags::Get().Block_Left), 0.5f);
-				}
-				else if (ActiveHand == ECombatDirection::Right && AnimData.Tag == FBrawlGameplayTags::Get().Block_Left)
-				{
-					Mesh->GetAnimInstance()->Montage_Play(FindAnimByTag(FBrawlGameplayTags::Get().Block_Right), 0.5f);
+				if (!AnimData.Tag.MatchesTag(AnimationTagToSearch))
+				{				
+					Mesh->GetAnimInstance()->Montage_Play(FindAnimDataByTag(AnimationTagToSearch).Animation, 0.5f);				
 				}
 			}
 		}
@@ -307,4 +384,16 @@ void ABrawlerBase::ReleaseBlock()
 	OnBlockStateChanged.Broadcast(-1.f);
 	bHoldingBlock = false;
 	Mesh->GetAnimInstance()->Montage_Stop(0.5f);
+}
+
+void ABrawlerBase::Reset()
+{
+	bDead = false;
+	bKO = false;
+	Mesh->GetAnimInstance()->Montage_Stop(0.5f);
+	CurrentHealth = MaxHealth;
+	OnHealthChanged.Broadcast(MaxHealth);
+	Cast<UMaterialInstanceDynamic>(Mesh->GetMaterial(0))->SetScalarParameterValue(FName("DamageMask"), 0.f);
+	SetHidden(false);
+	OnReset.Broadcast();
 }

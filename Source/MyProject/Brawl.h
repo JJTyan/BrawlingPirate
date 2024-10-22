@@ -35,6 +35,10 @@ public:
 
 	void Attack(ABrawlerBase* Attacker, ABrawlerBase* Defender, FAttackData AttackData);
 
+	//reset brawling to initial state, so that it can be replayed
+	UFUNCTION(BlueprintCallable)
+	void Reset();
+
 private:
 	FRotator GetOrientToMovementRotation() const;
 
@@ -43,11 +47,11 @@ public:
 	TObjectPtr<USceneComponent> Pivot;
 
 	//Player character
-	UPROPERTY(VisibleDefaultsOnly)
+	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly)
 	TObjectPtr<UChildActorComponent> CA_Player;
 
 	//Enemy Character
-	UPROPERTY(VisibleDefaultsOnly)
+	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly)
 	TObjectPtr<UChildActorComponent> CA_Enemy1;
 
 	//Behaviour component for AI enemies
@@ -101,4 +105,7 @@ private:
 	TObjectPtr<UInputAction> IA_AttackReleased;
 
 #pragma endregion
+
+	//Location where brawl actor was placed in editor
+	FTransform InitialLocation;
 };

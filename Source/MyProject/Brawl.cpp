@@ -2,6 +2,7 @@
 
 #include "Brawl.h"
 #include "BrawlLogic.h"
+#include "BrawlLogging.h"
 #include "Components/SplineComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "EnhancedInputComponent.h"
@@ -41,17 +42,20 @@ void ABrawl::PossessedBy(AController* NewController)
 void ABrawl::BeginPlay()
 {
 	Super::BeginPlay();
-
+	InitialLocation = GetActorTransform();
 	Player = Cast<ABrawlerBase>(CA_Player->GetChildActor());
 	Enemy1 = Cast<ABrawlerBase>(CA_Enemy1->GetChildActor());
 	BrawlLogic->SetProperties(Player, Enemy1);
+
+	UE_LOG(LogBrawl,Display,TEXT("%s - BeginPlay"),*GetNameSafe(this))
 }
 
 void ABrawl::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	if (!(Player->IsKOd() || Enemy1->IsKOd()))
+	const bool bPossessed{IsValid(Controller)};
+	if (bPossessed && !(Player->IsKOd() || Enemy1->IsKOd()))
 	{
 		const FVector Direction{ MovementScheme->GetMovementDirection(GetActorLocation()) };
 		AddMovementInput(Direction);
@@ -87,16 +91,6 @@ void ABrawl::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 	Input->BindAction(IA_AttackReleased, ETriggerEvent::Triggered, this, &ABrawl::AttackReleased);
 }
 
-void ABrawl::Attack(ABrawlerBase* Attacker, ABrawlerBase* Defender, FAttackData AttackData)
-{
-	//defence from spamming attack button
-	if (Attacker->CanAttack())
-	{
-		Attacker->Attack();
-		Defender->GetHit(AttackData);
-	}
-}
-
 void ABrawl::DirectionSelected(const FInputActionValue& ActionValue)
 {
 	const FVector2D InputAxisVector{ ActionValue.Get<FVector2D>() };
@@ -127,6 +121,23 @@ void ABrawl::AttackReleased()
 	Attack(Player, Enemy1, Player->GetAttackData());
 }
 
+void ABrawl::Attack(ABrawlerBase* Attacker, ABrawlerBase* Defender, FAttackData AttackData)
+{
+	//defense from spaming attack button
+	if (Attacker->CanAttack())
+	{
+		Attacker->Attack();
+		if (Defender->IsKOd())
+		{		
+			Attacker->EnterFinisherCode();
+		}
+		else
+		{
+			Defender->GetHit(AttackData);		
+		}
+	}
+}
+
 void ABrawl::AttackHeld()
 {
 	Player->IncrementAttackPower();
@@ -142,3 +153,13 @@ void ABrawl::BlockHeld()
 	Player->HoldBlock();
 }
 
+void ABrawl::Reset()
+{
+	SetActorTransform(InitialLocation);
+	Enemy1->Reset();
+	Player->Reset();
+	BrawlLogic->Reset();
+	SetActorHiddenInGame(false);
+	GetWorld()->GetFirstPlayerController()->SetInputMode(FInputModeGameOnly{});
+	GetWorld()->GetFirstPlayerController()->SetShowMouseCursor(false);
+}

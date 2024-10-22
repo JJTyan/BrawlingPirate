@@ -5,9 +5,16 @@
 #include "CoreMinimal.h"
 #include "DA_Animations.h"
 #include "GameFramework/Actor.h"
+
+#include <optional>
+
 #include "BrawlerBase.generated.h"
 
+class USphereComponent;
+class UCapsuleComponent;
+class UBoxComponent;
 class UBrawlOverlay;
+class AFinisher;
 
 UENUM(BlueprintType)
 enum class ECombatDirection : uint8
@@ -27,6 +34,7 @@ struct FAttackData
 {
 	float AttackPower;
 	ECombatDirection AttackDirection;
+	FGameplayTag HitReactionTag;
 };
 
 UCLASS()
@@ -41,13 +49,23 @@ public:
 	ABrawlerBase();
 
 	inline bool IsKOd() const { return bKO; }
-	FAttackData GetAttackData() const {return FAttackData(CurrentAttackPower,ActiveHand); }
+	inline FAttackData GetAttackData() const {return FAttackData(CurrentAttackPower,ActiveHand); }
+	
+	UFUNCTION(BlueprintCallable)
+	FVector GetIKTargetLocation() const;
 
 	//returns true if attack is possible
-	bool CanAttack() const {return CurrentAttackPower >= ATTACK_THRESHOLD_VALUE;}
+	inline bool CanAttack() const {return CurrentAttackPower >= ATTACK_THRESHOLD_VALUE;}
 
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
+
+	//Set location and attachent of IK target componen, so that it follows mesh animation
+	UFUNCTION(BlueprintCallable)
+	void SetIKTarget(FVector Location, FName Socket);
+	
+	UFUNCTION(BlueprintCallable)
+	void PlayHitReaction();
 
 	//	Increase current attack power by IncrementValue, if already restored to base value
 	void IncrementAttackPower();
@@ -57,9 +75,11 @@ public:
 
 	//Perform attack
 	void Attack();
+	
+	//Same as attack, but acion is saved to form a code, that is compared with actual code
+	void EnterFinisherCode();
 
-	UAnimMontage* FindAnimByTag(FGameplayTag AnimationTagToSearch);
-
+	FAnimData FindAnimDataByTag(FGameplayTag AnimationTagToSearch);
 
 	//Recieve an attack 
 	void GetHit(FAttackData AttackData);
@@ -69,6 +89,9 @@ public:
 
 	//Block button is released
 	void ReleaseBlock();
+
+	//Restore values to pre-combat state
+	void Reset();
 
 protected:
 	// Called when the game starts or when spawned
@@ -89,11 +112,14 @@ private:
 	void RestoreBlockPower();
 
 	//Create an overlay and it's controller to show this character data 
-	virtual void SetOverlay();
+	void SetOverlay();
+
+	void SpawnFinisher();
 
 	//Apply skin material as dynamic material instance
 	void CreateSkinDMI();
 
+	//Returns absolute amount of incoming damage that is blocked by block
 	float CalcDamageReduction(const FAttackData& AttackData) const;
 
 public:
@@ -108,13 +134,29 @@ public:
 	//broadcasts current direction
 	FOnDirectionAttributeChangedSignature OnDirectionChanged;
 
+	FOnAttributeChangedSignature OnFinisherUsed;
 	FOnAttributeChangedSignature OnKOd;
 	FOnAttributeChangedSignature OnDead;
-
+	FOnAttributeChangedSignature OnReset;
 
 private:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<USkeletalMeshComponent> Mesh;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UCapsuleComponent> RightFistCollision;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UCapsuleComponent> LeftFistCollision;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<USphereComponent> HeadCollision;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UBoxComponent> BodyCollision;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<USceneComponent> IKTargetComponent;
 
 	//Direction that will be used to attack
 	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
@@ -128,15 +170,19 @@ private:
 
 	//Amount of damage that can be resisted now
 	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
-	float CurrentBlockPower;
+	float CurrentBlockPower {0.f};
 	
 	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
 	//Amount of damage that can be dealt now
-	float CurrentAttackPower;
+	float CurrentAttackPower {0.f};
 
 	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
 	//Amount of damage that can be dealt now
 	bool bHoldingBlock {false};
+
+	//Controls when hand IK is active during attack
+	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	bool bUseHandIK {false};
 
 
 # pragma region PROPERTIES
@@ -178,13 +224,19 @@ private:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Properties, meta = (AllowPrivateAccess = "true"))
 	float BLOCK_BASE_VALUE{ 15.f };
 
-
+	//List of possible finishers
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Properties, meta = (AllowPrivateAccess = "true"))
+	TSet<TSubclassOf<AFinisher>> Finishers;
 
 # pragma endregion
 
 	//Direction of current blocking animation.
-	ECombatDirection BlockingAnimDirection;
+	ECombatDirection BlockingAnimDirection { ECombatDirection::None_Max };
+
+	//Info about the attack that we just received
+	FAttackData HitData;
 
 	bool bKO {false};
 	bool bDead {false};
+	bool bPlayingHitReaction {false};
 };
