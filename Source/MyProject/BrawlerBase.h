@@ -26,6 +26,15 @@ enum class ECombatDirection : uint8
 	None_Max UMETA(Hidden)
 };
 
+UENUM(BlueprintType)
+enum class EBlockType : uint8
+{
+	None,				//didn't block at all
+	PartialBlock,		//partially blocked damage
+	FullBlock,			//fully blocked damage
+	None_Max UMETA(Hidden)
+};
+
 DECLARE_MULTICAST_DELEGATE_OneParam(FOnNumericAttributeChangedSignature, float);
 DECLARE_MULTICAST_DELEGATE(FOnAttributeChangedSignature);
 DECLARE_MULTICAST_DELEGATE_OneParam(FOnDirectionAttributeChangedSignature, ECombatDirection);
@@ -59,6 +68,10 @@ public:
 
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
+
+	//Attaches fist to IKSourceActor's Mesh's Socket at specified Location
+	UFUNCTION(BlueprintCallable)
+	void AttachHand(bool bRightFist,FName Socket, const FVector& WorldLocation, ABrawlerBase* IKSourceActor);
 
 	//Set location and attachent of IK target componen, so that it follows mesh animation
 	UFUNCTION(BlueprintCallable)
@@ -120,7 +133,9 @@ private:
 	void CreateSkinDMI();
 
 	//Returns absolute amount of incoming damage that is blocked by block
-	float CalcDamageReduction(const FAttackData& AttackData) const;
+	float CalcDamageReduction() const;
+
+	EBlockType GetBlockType(const FAttackData& AttackData) const;
 
 public:
 	//broadcasts current health
@@ -180,10 +195,13 @@ private:
 	//Amount of damage that can be dealt now
 	bool bHoldingBlock {false};
 
-	//Controls when hand IK is active during attack
+	//Specifies whether this attack will use IK to "glue" fist to body or not
 	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
 	bool bUseHandIK {false};
 
+	//Shows how exactly block should be handled - full, partial or no block
+	UPROPERTY(BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	EBlockType BlockType {EBlockType::None};
 
 # pragma region PROPERTIES
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Properties, meta = (AllowPrivateAccess = "true"))
@@ -239,4 +257,5 @@ private:
 	bool bKO {false};
 	bool bDead {false};
 	bool bPlayingHitReaction {false};
+	FTimerHandle ProvideIKLocationHandle;
 };

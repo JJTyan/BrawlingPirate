@@ -14,8 +14,10 @@
 #include "Blueprint/UserWidget.h"
 #include "BrawlOverlay.h"
 #include "BrawlWidgetController.h"
+#include "DrawDebugHelpers.h"
 #include "Kismet/KismetMaterialLibrary.h"
 #include "Kismet/GameplayStatics.h"
+#include "Kismet/KismetMathLibrary.h"
 #include "Materials/MaterialInstanceDynamic.h"
 
 ABrawlerBase::ABrawlerBase()
@@ -253,7 +255,8 @@ void ABrawlerBase::DropAttackPower()
 void ABrawlerBase::GetHit(FAttackData AttackData)
 {
 	HitData = AttackData;
-	const float RecievedDamage {AttackData.AttackPower - CalcDamageReduction(AttackData)};
+	BlockType = GetBlockType(AttackData);
+	const float RecievedDamage {AttackData.AttackPower - CalcDamageReduction()};
 
 	CurrentHealth -= RecievedDamage;
 	if (CurrentHealth <= 0)
@@ -272,31 +275,9 @@ void ABrawlerBase::GetHit(FAttackData AttackData)
 	GetWorldTimerManager().SetTimer(TimerHandle,this, &ABrawlerBase::PlayHitReaction, 0.25f, false);
 }
 
-void ABrawlerBase::PlayHitReaction()
+EBlockType ABrawlerBase::GetBlockType(const FAttackData& AttackData) const
 {
-	if (!bPlayingHitReaction)
-	{	
-		Cast<UBrawlerAnimInstance>(Mesh->GetAnimInstance())->PlayHitReacion(HitData.HitReactionTag);
-		
-		FTimerDelegate TimerDelegate;
-		TimerDelegate.BindLambda([this]
-			{
-				bPlayingHitReaction = false;
-			});
-
-		FTimerHandle TimerHandle;
-		GetWorldTimerManager().SetTimer(TimerHandle, TimerDelegate, 0.5f, false);
-	}
-
-}
-
-float ABrawlerBase::CalcDamageReduction(const FAttackData& AttackData) const
-{
-	//if not blocking at all - block 10% of CurrentBlockingPower
-		//If blocking at wrong direction - block 33% of CurrentBlockingPower
-		//If blocking at correct direction - block 100% of CurrentBlockingPower
-
-		//define blocking direction. Right hand blocks enemy Left and vice versa
+	//define blocking direction. Right hand blocks enemy Left and vice versa
 	ECombatDirection BlockingDirection = ActiveHand;
 	if (ActiveHand == ECombatDirection::Right)
 	{
@@ -310,14 +291,51 @@ float ABrawlerBase::CalcDamageReduction(const FAttackData& AttackData) const
 	float DamageReduction = CurrentBlockPower;
 	if (!bHoldingBlock)
 	{
-		DamageReduction *= 0.1f;
+		return EBlockType::None;
 	}
 	else if (AttackData.AttackDirection != BlockingDirection)
+	{
+		return EBlockType::PartialBlock;
+	}
+
+	return EBlockType::FullBlock;
+}
+
+float ABrawlerBase::CalcDamageReduction() const
+{
+	//if not blocking at all - block 10% of CurrentBlockingPower
+	//If blocking at wrong direction - block 33% of CurrentBlockingPower
+	//If blocking at correct direction - block 100% of CurrentBlockingPower
+
+	float DamageReduction = CurrentBlockPower;
+	if (BlockType == EBlockType::None)
+	{
+		DamageReduction *= 0.1f;
+	}
+	else if (BlockType == EBlockType::PartialBlock)
 	{
 		DamageReduction *= 0.33f;
 	}
 
 	return DamageReduction;
+}
+
+void ABrawlerBase::PlayHitReaction()
+{
+	if (!bPlayingHitReaction)
+	{
+		bPlayingHitReaction = true;
+		Cast<UBrawlerAnimInstance>(Mesh->GetAnimInstance())->PlayHitReacion(HitData.HitReactionTag);
+
+		FTimerDelegate TimerDelegate;
+		TimerDelegate.BindLambda([this]
+			{
+				bPlayingHitReaction = false;
+			});
+
+		FTimerHandle TimerHandle;
+		GetWorldTimerManager().SetTimer(TimerHandle, TimerDelegate, 0.5f, false);
+	}
 }
 
 void ABrawlerBase::HoldBlock()
@@ -396,4 +414,42 @@ void ABrawlerBase::Reset()
 	Cast<UMaterialInstanceDynamic>(Mesh->GetMaterial(0))->SetScalarParameterValue(FName("DamageMask"), 0.f);
 	SetHidden(false);
 	OnReset.Broadcast();
+}
+
+void ABrawlerBase::AttachHand(bool bRightFist, FName Socket, const FVector& WorldLocation, ABrawlerBase* IKSourceActor)
+{
+	//TODO Logically this doesn't belong here.
+	//Reset to initial state 
+	bUseHandIK = false;
+
+	//Activate hand IK in animBP
+	UBrawlerAnimInstance* AnimInstance{ CastChecked<UBrawlerAnimInstance>(Mesh->GetAnimInstance()) };
+	const FVector ContactLocationLS { UKismetMathLibrary::InverseTransformLocation(Mesh->GetComponentTransform(),WorldLocation)};
+	if (bRightFist)
+	{
+		AnimInstance->StartRightHandIK(ContactLocationLS);
+	}
+	else
+	{
+		AnimInstance->StartLeftHandIK(ContactLocationLS);
+	}
+	
+	//Move IK target component to contact location. Attach to another bone if needed (i.e. head, body, hand)
+	IKSourceActor->SetIKTarget(WorldLocation, Socket);
+
+	//feed IK location to animBP for 1 second-
+	FTimerDelegate ProvideIKLocationDelegate;
+	ProvideIKLocationDelegate.BindLambda([this, AnimInstance, IKSourceActor]
+			{
+				const FVector ContactLocationLS{ UKismetMathLibrary::InverseTransformLocation(Mesh->GetComponentTransform(),IKSourceActor->GetIKTargetLocation()) };
+				AnimInstance->SetIKTargetLocation(ContactLocationLS);
+				DrawDebugSphere(GetWorld(), IKSourceActor->GetIKTargetLocation(),2.5f,8,FColor::Red,false,0.1f);
+			});
+	GetWorldTimerManager().SetTimer(ProvideIKLocationHandle, ProvideIKLocationDelegate, GetWorld()->GetDeltaSeconds(), true);
+
+	FTimerDelegate StopProvidingLocationDelegate;
+	StopProvidingLocationDelegate.BindLambda([this]{GetWorldTimerManager().ClearTimer(ProvideIKLocationHandle);});
+	FTimerHandle StopProvidingLocationHandle;
+	GetWorldTimerManager().SetTimer(StopProvidingLocationHandle, StopProvidingLocationDelegate,1.f,false);
+
 }
