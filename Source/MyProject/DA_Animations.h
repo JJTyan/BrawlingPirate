@@ -28,9 +28,13 @@ struct FAnimData
 	UPROPERTY(EditAnywhere)
 	FGameplayTag HitReactionTag;
 
-	//Tag that specifies type of hit reaction when blocked (for combat animations)
+	//Tag that specifies type of hit reaction when fully blocked (for combat animations)
 	UPROPERTY(EditAnywhere)
-	FGameplayTag BlockReactionTag;
+	FGameplayTag BlockFullReactionTag;
+
+	//Tag that specifies type of hit reaction when partially blocked (for combat animations)
+	UPROPERTY(EditAnywhere)
+	FGameplayTag BlockPartialReactionTag;
 
 	//If true - IK will be enabled for this animation
 	UPROPERTY(EditAnywhere)

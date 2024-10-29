@@ -173,9 +173,25 @@ void ABrawlerBase::SelectCombatDirection(ECombatDirection NewDirection)
 
 void ABrawlerBase::Attack()
 {
+	FAnimData AnimData;
+	PlayAttackMontage(AnimData);
+	bUseHandIK = AnimData.bUseIK;
+
+	OutAttackData.AttackPower = CurrentAttackPower;
+	OutAttackData.AttackDirection = ActiveHand;
+	OutAttackData.AnimData = AnimData;
+	
+	//remove "gloving fists effect"
+	Cast<UMaterialInstanceDynamic>(Mesh->GetMaterial(0))->SetScalarParameterValue(FName("EmissiveHandsStrength"), 0);	
+	
+	DropAttackPower();
+}
+
+void ABrawlerBase::PlayAttackMontage(FAnimData& AnimData)
+{
 	FGameplayTag AnimationTagToSearch;
 
-	if (CurrentAttackPower > ATTACK_BASE_VALUE)
+	if (CurrentAttackPower > ATTACK_BASE_VALUE * 1.5f)		//condition to play "charged" animation
 	{
 		switch (ActiveHand)
 		{
@@ -194,10 +210,10 @@ void ABrawlerBase::Attack()
 		case ECombatDirection::Right:
 			AnimationTagToSearch = FBrawlGameplayTags::Get().Charged_Attack_Right;
 			break;
-		
+
 		default:
 			break;
-		}	
+		}
 	}
 	else
 	{
@@ -222,19 +238,14 @@ void ABrawlerBase::Attack()
 			break;
 		}
 	}
-
-	Cast<UMaterialInstanceDynamic>(Mesh->GetMaterial(0))->SetScalarParameterValue(FName("EmissiveHandsStrength"), 0);	
-	
-	const FAnimData AnimData { FindAnimDataByTag(AnimationTagToSearch) };
+	AnimData = FindAnimDataByTag(AnimationTagToSearch);
 	Mesh->GetAnimInstance()->Montage_Play(AnimData.Animation, 0.5f);
-	bUseHandIK = AnimData.bUseIK;
-	DropAttackPower();
 }
 
 FAnimData ABrawlerBase::FindAnimDataByTag(FGameplayTag AnimationTagToSearch)
 {
 	TArray<FAnimData> PossibleAnimations;
-	for (FAnimData AnimData : Animations->Animations)
+	for (const FAnimData& AnimData : Animations->Animations)
 	{
 		if (AnimData.Tag == AnimationTagToSearch)
 		{
@@ -325,7 +336,28 @@ void ABrawlerBase::PlayHitReaction()
 	if (!bPlayingHitReaction)
 	{
 		bPlayingHitReaction = true;
-		Cast<UBrawlerAnimInstance>(Mesh->GetAnimInstance())->PlayHitReacion(HitData.HitReactionTag);
+
+		FGameplayTag HitReactionTag;
+		
+		switch (BlockType)
+		{
+		case EBlockType::None:
+			HitReactionTag = HitData.AnimData.HitReactionTag;
+			break;
+		case EBlockType::PartialBlock:
+			HitReactionTag = HitReactionTag = HitData.AnimData.BlockPartialReactionTag;
+			break;
+		case EBlockType::FullBlock:
+			HitReactionTag = HitReactionTag = HitData.AnimData.BlockFullReactionTag;
+			break;
+		case EBlockType::None_Max:
+			[[fallthrough]];
+		default:
+			checkNoEntry();
+			break;
+		}
+		
+		Cast<UBrawlerAnimInstance>(Mesh->GetAnimInstance())->PlayHitReacion(HitReactionTag);
 
 		FTimerDelegate TimerDelegate;
 		TimerDelegate.BindLambda([this]

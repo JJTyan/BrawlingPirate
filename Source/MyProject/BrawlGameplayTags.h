@@ -33,9 +33,12 @@ public:
 	FGameplayTag Block_Left;
 	FGameplayTag Block_Right;
 
-	FGameplayTag HitReact_Block_Straight;
-	FGameplayTag HitReact_Block_Left;
-	FGameplayTag HitReact_Block_Right;
+	FGameplayTag HitReact_BlockFull_Straight;
+	FGameplayTag HitReact_BlockFull_Left;
+	FGameplayTag HitReact_BlockFull_Right;
+	FGameplayTag HitReact_BlockPartial_Straight;
+	FGameplayTag HitReact_BlockPartial_Left;
+	FGameplayTag HitReact_BlockPartial_Right;
 	FGameplayTag HitReact_Head_Straight;
 	FGameplayTag HitReact_Head_Left;
 	FGameplayTag HitReact_Head_Right;

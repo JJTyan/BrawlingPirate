@@ -33,7 +33,7 @@ public:
 	virtual void Tick(float DeltaTime) override;
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
-	void Attack(ABrawlerBase* Attacker, ABrawlerBase* Defender, FAttackData AttackData);
+	void Attack(ABrawlerBase* Attacker, ABrawlerBase* Defender);
 
 	//reset brawling to initial state, so that it can be replayed
 	UFUNCTION(BlueprintCallable)

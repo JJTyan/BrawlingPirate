@@ -117,16 +117,17 @@ void ABrawl::DirectionSelected(const FInputActionValue& ActionValue)
 
 void ABrawl::AttackReleased()
 {
-	Cast<ABrawlerBase>(CA_Player->GetChildActor())->Attack();
-	Attack(Player, Enemy1, Player->GetAttackData());
+	Attack(Player, Enemy1);
 }
 
-void ABrawl::Attack(ABrawlerBase* Attacker, ABrawlerBase* Defender, FAttackData AttackData)
+void ABrawl::Attack(ABrawlerBase* Attacker, ABrawlerBase* Defender)
 {
 	//defense from spaming attack button
 	if (Attacker->CanAttack())
 	{
 		Attacker->Attack();
+		//Attack data can't be filled before the Attack()
+		const FAttackData AttackData { Attacker->GetAttackData()};
 		if (Defender->IsKOd())
 		{		
 			Attacker->EnterFinisherCode();

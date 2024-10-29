@@ -43,7 +43,7 @@ struct FAttackData
 {
 	float AttackPower;
 	ECombatDirection AttackDirection;
-	FGameplayTag HitReactionTag;
+	FAnimData AnimData;
 };
 
 UCLASS()
@@ -58,7 +58,7 @@ public:
 	ABrawlerBase();
 
 	inline bool IsKOd() const { return bKO; }
-	inline FAttackData GetAttackData() const {return FAttackData(CurrentAttackPower,ActiveHand); }
+	inline FAttackData GetAttackData() const {return OutAttackData; }
 	
 	UFUNCTION(BlueprintCallable)
 	FVector GetIKTargetLocation() const;
@@ -86,7 +86,7 @@ public:
 	//Set Attack Direction
 	void SelectCombatDirection(ECombatDirection NewDirection);
 
-	//Perform attack
+	//Perform attack actions that are local to the attacker (play anim, change values)
 	void Attack();
 	
 	//Same as attack, but acion is saved to form a code, that is compared with actual code
@@ -120,6 +120,9 @@ private:
 
 	//Block power is going down each tick
 	void DecrementBlockPower();
+
+	//Plays a montage
+	void  PlayAttackMontage(OUT FAnimData& AnimData);
 
 	//Block power is going up each tick
 	void RestoreBlockPower();
@@ -253,6 +256,8 @@ private:
 
 	//Info about the attack that we just received
 	FAttackData HitData;
+
+	FAttackData OutAttackData;
 
 	bool bKO {false};
 	bool bDead {false};

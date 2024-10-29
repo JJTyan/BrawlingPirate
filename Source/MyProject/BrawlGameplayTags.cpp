@@ -23,9 +23,14 @@ void FBrawlGameplayTags::InitializeNativeTags()
 	GameplayTags.Block_Left = UGameplayTagsManager::Get().AddNativeGameplayTag(FName("Block.Left"), FString(TEXT("Left hand block")));
 	GameplayTags.Block_Right = UGameplayTagsManager::Get().AddNativeGameplayTag(FName("Block.Right"), FString(TEXT("Right hand block")));
 	
-	GameplayTags.HitReact_Block_Straight = UGameplayTagsManager::Get().AddNativeGameplayTag(FName("HitReact.Block.Straight"), FString(TEXT("HitReact Block Straight")));
-	GameplayTags.HitReact_Block_Left = UGameplayTagsManager::Get().AddNativeGameplayTag(FName("HitReact.Block.Left"), FString(TEXT("HitReact Block Left")));
-	GameplayTags.HitReact_Block_Right = UGameplayTagsManager::Get().AddNativeGameplayTag(FName("HitReact.Block.Right"), FString(TEXT("HitReact Block Right")));
+	GameplayTags.HitReact_BlockFull_Straight = UGameplayTagsManager::Get().AddNativeGameplayTag(FName("HitReact.Block.Straight"), FString(TEXT("HitReact Block Straight")));
+	GameplayTags.HitReact_BlockFull_Left = UGameplayTagsManager::Get().AddNativeGameplayTag(FName("HitReact.Block.Left"), FString(TEXT("HitReact Block Left")));
+	GameplayTags.HitReact_BlockFull_Right = UGameplayTagsManager::Get().AddNativeGameplayTag(FName("HitReact.Block.Right"), FString(TEXT("HitReact Block Right")));
+	GameplayTags.HitReact_BlockPartial_Straight = UGameplayTagsManager::Get().AddNativeGameplayTag(FName("HitReact.BlockPartial.Straight"), FString(TEXT("HitReact BlockPartial Straight")));
+	GameplayTags.HitReact_BlockPartial_Left = UGameplayTagsManager::Get().AddNativeGameplayTag(FName("HitReact.BlockPartial.Left"), FString(TEXT("HitReact BlockPartial Left")));
+	GameplayTags.HitReact_BlockPartial_Right = UGameplayTagsManager::Get().AddNativeGameplayTag(FName("HitReact.BlockPartial.Right"), FString(TEXT("HitReact BlockPartial Right")));
+
+
 	GameplayTags.HitReact_Head_Straight = UGameplayTagsManager::Get().AddNativeGameplayTag(FName("HitReact.Head.Straight"), FString(TEXT("HitReact Head Straight")));
 	GameplayTags.HitReact_Head_Left = UGameplayTagsManager::Get().AddNativeGameplayTag(FName("HitReact.Head.Left"), FString(TEXT("HitReact Head Left")));
 	GameplayTags.HitReact_Head_Right = UGameplayTagsManager::Get().AddNativeGameplayTag(FName("HitReact.Head.Right"), FString(TEXT("HitReact Head Right")));
@@ -33,5 +38,5 @@ void FBrawlGameplayTags::InitializeNativeTags()
 	GameplayTags.HitReact_Body_Left = UGameplayTagsManager::Get().AddNativeGameplayTag(FName("HitReact.Body.Left"), FString(TEXT("HitReact Body Left")));
 	GameplayTags.HitReact_Body_Right = UGameplayTagsManager::Get().AddNativeGameplayTag(FName("HitReact.Body.Right"), FString(TEXT("HitReact Body Right")));
 
-	GameplayTags.Stance_KO = UGameplayTagsManager::Get().AddNativeGameplayTag(FName("Sance.KO"), FString(TEXT("Knock out")));
+	GameplayTags.Stance_KO = UGameplayTagsManager::Get().AddNativeGameplayTag(FName("Stance.KO"), FString(TEXT("Knock out")));
 }
