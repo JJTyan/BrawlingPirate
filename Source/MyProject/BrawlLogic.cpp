@@ -5,6 +5,7 @@
 #include "Blueprint/UserWidget.h"
 #include "BrawlOverlay.h"
 #include "ActionsWidgetController.h"
+#include "BrawlGameplayTags.h"
 
 UBrawlLogic::UBrawlLogic()
 {
@@ -43,6 +44,7 @@ void UBrawlLogic::BeginPlay()
 {
 	Super::BeginPlay();
 	SetOverlay();
+	SetIcons();
 }
 
 void UBrawlLogic::SetOverlay()
@@ -52,6 +54,32 @@ void UBrawlLogic::SetOverlay()
 	OverlayWidget->SetWidgetController(WidgetController);
 	WidgetController->InitializeController(this);
 	OverlayWidget->AddToViewport();
+}
+
+void UBrawlLogic::SetIcons()
+{
+	TArray < FGameplayTag> Tags
+	{
+		FBrawlGameplayTags::Get().Block_Bottom,
+		FBrawlGameplayTags::Get().Block_Top,
+		FBrawlGameplayTags::Get().Block_Left,
+		FBrawlGameplayTags::Get().Block_Right,
+
+		FBrawlGameplayTags::Get().Charged_Attack_Bottom,
+		FBrawlGameplayTags::Get().Charged_Attack_Top,
+		FBrawlGameplayTags::Get().Charged_Attack_Left,
+		FBrawlGameplayTags::Get().Charged_Attack_Right,
+
+		FBrawlGameplayTags::Get().Fast_Attack_Bottom,
+		FBrawlGameplayTags::Get().Fast_Attack_Top,
+		FBrawlGameplayTags::Get().Fast_Attack_Left,
+		FBrawlGameplayTags::Get().Fast_Attack_Right
+	};
+
+	for (const FGameplayTag& Tag : Tags)
+	{
+		IconsData.Add(Tag, DA_Icons->GetRandomDataByTag(Tag));
+	}
 }
 
 void UBrawlLogic::TimerTick(float DeltaTime)
@@ -109,22 +137,27 @@ void UBrawlLogic::AddActionToStack()
 	if (ActionStack.Num() == 0)
 	{
 		NewAction.Direction = ECombatDirection::Left;
+		NewAction.Icon = IconsData[FBrawlGameplayTags::Get().Block_Left].IconAsset;
 	}
 	else if (ActionStack.Last().Direction == ECombatDirection::Left)
 	{
 		NewAction.Direction = ECombatDirection::Right;
+		NewAction.Icon = IconsData[FBrawlGameplayTags::Get().Block_Right].IconAsset;
 	}
 	else if (ActionStack.Last().Direction == ECombatDirection::Right)
 	{
 		NewAction.Direction = ECombatDirection::Top;
+		NewAction.Icon = IconsData[FBrawlGameplayTags::Get().Block_Top].IconAsset;
 	}
 	else if (ActionStack.Last().Direction == ECombatDirection::Top)
 	{
 		NewAction.Direction = ECombatDirection::Bottom;
+		NewAction.Icon = IconsData[FBrawlGameplayTags::Get().Block_Bottom].IconAsset;
 	}
 	else
 	{
 		NewAction.Direction = ECombatDirection::Left;
+		NewAction.Icon = IconsData[FBrawlGameplayTags::Get().Block_Left].IconAsset;
 	}
 
 	NewAction.AcionStartDelegate.BindUObject(Enemy,&ABrawlerBase::HoldBlock);

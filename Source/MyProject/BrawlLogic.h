@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "BrawlerBase.h"
 #include "Components/ActorComponent.h"
+#include "DA_Icons.h"
 #include "BrawlLogic.generated.h"
 
 DECLARE_DELEGATE(FEnemyActionSignature)
@@ -24,6 +25,9 @@ struct FEnemyAction
 	//Icon for the UI
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
 	UTexture2D* Icon;
+	//Color of the Icon
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
+	FColor Color;
 
 	//actual time of starting of ability
 	float ActionStartTime;
@@ -63,6 +67,9 @@ private:
 	void AddActionToStack();
 	bool ShouldAddNewAction() const;
 	void StopLogic();
+
+	//randomly select 1 icon for each possible tag from Icons data asset
+	void SetIcons();
 	
 public:
 	FEnemyActionRemovedSignature OnReset;
@@ -76,6 +83,12 @@ private:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, category = "Properties", meta = (AllowPrivateAccess = "true"))
 	TSubclassOf<UBrawlOverlay> OverlayClass;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, category = "Properties", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UDA_Icons> DA_Icons;
+
+	//Icons that will be randomly-selected from general DA_Icons for this combat.
+	TMap<FGameplayTag,FIconData> IconsData;
 
 	//Here we hold all actions we planned for the enemy NPC
 	TArray<FEnemyAction> ActionStack;
